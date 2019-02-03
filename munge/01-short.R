@@ -2,16 +2,14 @@
 
 
 #Short Data
-g.short <- st_read(dsn="data/FPA_FOD_20150323.gdb",layer="Fires") %>% 
-  st_crs(plot.proj) %>%
+g.short <- st_read(dsn="data/FPA_FOD_20150323.gdb",
+                   layer="Fires",
+                   stringsAsFactors = F)  %>% 
+  st_transform(readin.proj) %>%
   rename_all(str_to_lower) %>%
-  select(ics_209_incident_number,latitude,longitude,discovery_date,cont_date,state,fire_size) %>%
-  mutate_if(base::is.factor,as.character) %>%  
-  mutate(discovery_date=ymd_hms(discovery_date),
-                cont_date=ymd_hms(cont_date)) %>%
-  filter(state=="CA",
-                !is.na(ics_209_incident_number)) %>% 
-  st_transform(plot.proj)
+  select(ics_209_incident_number,fire_name,latitude,longitude,discovery_date,cont_date,state,fire_size) %>% 
+  filter(state %in% c("AZ","CA","CO","ID","MT","NM","OR","UT","WA","WY"),
+         !is.na(ics_209_incident_number)) 
 
-# save(g.short,file="data/short_sf.Rdata")
+save(g.short,file="cache/short_sf.Rdata")
 

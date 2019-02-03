@@ -7,9 +7,19 @@
 source("functions/init_functions.R")
 
 #Loading and installing packages
-init.pacs(c("tidyverse","lubridate","foreign","mice",
-          "sf","USAboundaries","viridis","scales"))
+init.pacs(c("tidyverse","lubridate","foreign","mice","foreach","doSNOW",
+          "sf","raster","USAboundaries","leaflet","viridis","scales",
+          "conflicted","htmlwidgets"))
 
+
+#Defining conflict preferences
+conflict_prefer("filter", "dplyr")
+conflict_prefer("select", "dplyr")
+
+#########################
+#Setting project map projections
+readin.proj=4269 #because it works with the lat and lons provided
+plot.proj=2227
 #########################
 #Loading project helper functions
 run.script("functions")
@@ -20,5 +30,6 @@ if(!dir.exists("data")){
   dir.create("data")
   message("The data folder has been created. Download the data and place it in the data folder.")
 }
+
 #Load cached data if exists otherwise build data
-cache.or.build()
+#cache.or.build()

@@ -8,3 +8,5 @@ ics.dat <- structures %>%
   summarise(threatened=max(threatened)) %>%
   ungroup() %>%
   mutate(im_report_date=as_date(im_report_date))
+
+save(ics.dat,file = "cache/ics_structures.Rdata")
