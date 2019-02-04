@@ -1,27 +1,9 @@
 #This script creates the leaflet map
 
 
-##############################################
-#Rasterizing the wui data
-western.states <- us_states(resolution = "low",
-                            states = c("washington","oregon","california","arizona","nevada","utah","idaho","montana","wyoming","colorado","new mexico")) %>%
-  st_transform(plot.proj)
-
-wui.plot <- st_intersection(wui.shp,western.states) %>%
-  mutate(scale=(scale-1)*100,
-         scale=ifelse(scale<0,0,scale)) %>%
-  st_transform(3857)
-
-r.raster <- raster()   #Creating raster object
-extent(r.raster) <- extent(wui.plot)  #Setting extent to match sf object
-res(r.raster) <- 2000 #Setting cell size in meters (resolution)
-wui.raster <- rasterize(wui.plot,r.raster,field="scale",fun=max)
-
-save(wui.raster,file = "cache/wui_plot.Rdata")
-
 #############################################
 #Plotting with leaflet raster
-
+#load("cache/wui_plot.Rdata")
 
 #Define color pallete
 pal <- colorNumeric(palette = "viridis",values(wui.raster),na.color = "transparent",reverse = T)
@@ -29,38 +11,48 @@ pal <- colorNumeric(palette = "viridis",values(wui.raster),na.color = "transpare
 fire.pts.homes <- fire.pts.homes %>%
   mutate_at(vars(add_homes:add_cost_upper),~round(.,digits = 2)) %>%
   mutate_at(vars(add_cost:add_cost_upper),dollar) 
+  
+
+#Subset of fires that threaten an additional 1000 homes
+fire.pts.homes.1000 <- fire.pts.homes %>% 
+  filter(add_homes>1000)
 
 
 #Define fire labels
 fire.labels <- sprintf(
-  "<strong> Fire Name %s </strong> <br/>  Homes Threatened: %g <br/> Additional Crews: %g  <br/> Additional Engines: %g  <br/>  Additional Cost: %s [%s, %s] ",
-  fire.pts.homes$ics_209_incident_number,
-  fire.pts.homes$add_homes,
-  fire.pts.homes$add_crew,
-  fire.pts.homes$add_engine,
-  fire.pts.homes$add_cost,
-  fire.pts.homes$add_cost_lower,
-  fire.pts.homes$add_cost_upper) %>%
+  "<strong> %s FIRE (%g) </strong> <br/>  Homes Threatened: %g <br/> Additional Crews: %g  <br/> Additional Engines: %g  <br/>  Additional Cost: %s [%s, %s] ",
+  fire.pts.homes.1000$fire_name,
+  fire.pts.homes.1000$year,
+  fire.pts.homes.1000$add_homes,
+  fire.pts.homes.1000$add_crew,
+  fire.pts.homes.1000$add_engine,
+  fire.pts.homes.1000$add_cost,
+  fire.pts.homes.1000$add_cost_lower,
+  fire.pts.homes.1000$add_cost_upper) %>%
   lapply(htmltools::HTML)
 
 #Create map
 m <- leaflet() %>% setView(lng = -113.758744, lat = 39.873757, zoom = 5)
 map.tosave <- m %>% 
   addProviderTiles(providers$Stamen.TonerLite) %>%
-  addRasterImage(wui.raster, colors = pal, opacity = .35) %>%
+  addRasterImage(wui.raster, colors = pal, opacity = .55) %>%
   addLegend(pal=pal,
             values = values(wui.raster),
             title = "Housing Density Change <br>2000-2030",
             position = "bottomleft",
             labFormat = labelFormat(suffix = "%")) %>%
-  addCircles(lng = fire.pts.homes$longitude, lat = fire.pts.homes$latitude, radius=100,
-             fill = TRUE, fillColor = "black", fillOpacity = 1, color = "black", stroke=F) %>%
-  addCircles(lng = fire.pts.homes$longitude, lat = fire.pts.homes$latitude,
-             radius = 1609, stroke = T, weight = 1, opacity = 1, color = "black", fill = F,
-             label = fire.labels) %>%
-  addScaleBar(position = c("bottomleft")) #%>%
-# addLogo(img="Compass-rose-basic-thin-letters-400.png", alpha = 1, src = c("local"),
-#         position = c("topright"), width = 80, height = 80)
+  addCircles(lng = fire.pts.homes$longitude, lat = fire.pts.homes$latitude, radius=1000,
+             fill = TRUE, fillColor = "black", fillOpacity = 1, color = "black", stroke=F,
+             group = "All Fires") %>%
+  addCircles(lng = fire.pts.homes.1000$longitude, lat = fire.pts.homes.1000$latitude, radius=100,
+             fill = TRUE, fillColor = "black", fillOpacity = 1, color = "black", stroke=F,
+             group = ">1000 Homes Thr.") %>%
+  addCircles(lng = fire.pts.homes.1000$longitude, lat = fire.pts.homes.1000$latitude,
+             radius = 1609, stroke = F, fill = TRUE, fillColor = "red", fillOpacity = .5,
+             label = fire.labels,group = ">1000 Homes Thr.") %>%
+  addScaleBar(position = c("bottomleft")) %>%
+  addLayersControl(overlayGroups = c("All Fires", ">1000 Homes Thr."), 
+                   options = layersControlOptions(collapsed = FALSE))
 
 saveWidget(map.tosave,file="CA_Growth_Fire.html",selfcontained = T)
 #Can use mapshot but I just displayed it and used windows snipping tool

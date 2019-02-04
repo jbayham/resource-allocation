@@ -2,62 +2,19 @@
 #housing growth through 2030.
 
 
-
-###########################################################
-#Merging short data with 209 
-fire.dat <- inner_join(g.short,
-                       ics.dat,
-                       by=c("ics_209_incident_number"="im_incident_number")) %>%
-  st_transform(plot.proj)
-  
-
-fire.pts <- fire.dat %>% 
-  dplyr::select(ics_209_incident_number,fire_name,latitude,longitude,fire_size) %>%
-  distinct(.keep_all=T)
-
-#################################################################
-#Running this in parallel improves efficiency considerably  #dim(fire.pts)[1]
-# fire.pts.temp <- st_buffer(fire.pts,dist = 6561.68) %>%
-#                        st_intersection(.,wui.shp) %>%
-#                        group_by(ics_209_incident_number) %>%
-#                        dplyr::summarise(scale=max(scale,na.rm=T)) %>%
-#                        ungroup()
-
-cl <- makeCluster(4)
-registerDoSNOW(cl)
-loop.out <- foreach(i=1:dim(fire.pts)[1],
-                    .combine = 'rbind',
-                    .packages = c("sf","dplyr"),
-                    .inorder = T) %dopar% {  
-  calculate.scale(fire.pt = fire.pts[i,],
-                  wui.shp = wui.shp %>% dplyr::select(scale))
-}
-stopCluster(cl)
-                    
-save(loop.out,file = "cache/scale_calc.Rdata")
-################################################################
-load("cache/scale_calc.Rdata")
-fire.pts$scale <- unlist(loop.out)
-fire.pts$scale[is.nan(fire.pts$scale) | fire.pts$scale<1] <- 1
-
-#st_geometry(fire.dat) <- NULL
-#st_geometry(fire.pts) <- NULL
-
-
-
-
+############################################################
 #Additional threatened homes times the coefficient divide 20 members in crew times 14 days times daily costs of 10,400
 #Cost and resource parameters type 1 crew and engine
-r.est <- c(0.015,0.006) #regression estimates c(0.0145774,0.0057903)
+r.est <- c(0.016,0.007) #regression estimates c(0.0145774,0.0057903)
 r.est.upper <- c(0.028327297,0.010654072) #regression estimates -- upper CI
 r.est.lower <- c(0.000827503,0.000926529) #regression estimates -- lower CI
 crew.size <- c(16.573,4.373)   #c(18.24,3.5)  c(20,5)
 daily.cost <- c(10400,4411)
 
+
 #Calculating the increased cost of increased # of threatened homes per fire
 #break out into parts
-st_geometry(fire.pts) <- NULL
-fire.dat.homes <- inner_join(fire.dat,fire.pts,by = c("ics_209_incident_number", "latitude", "longitude", "fire_size")) %>%
+fire.dat.homes <- left_join(fire.dat,fire.pts) %>%
   mutate(tres=threatened,
          tres_30=tres*scale-tres, #
          add_res=(tres_30*sum(r.est/crew.size)),
@@ -69,24 +26,28 @@ fire.dat.homes <- inner_join(fire.dat,fire.pts,by = c("ics_209_incident_number",
          add_res_engine=(tres_30*sum(r.est[2]/crew.size[2])),
          add_res_engine_upper=(tres_30*sum(r.est.upper[2]/crew.size[2])),
          add_res_engine_lower=(tres_30*sum(r.est.lower[2]/crew.size[2])),
-         add_cost=tres_30*sum(daily.cost*r.est/crew.size),
-         add_cost_upper=tres_30*sum(daily.cost*r.est.upper/crew.size),
-         add_cost_lower=tres_30*sum(daily.cost*r.est.lower/crew.size),
+         #add_cost=tres_30*sum(daily.cost*r.est/crew.size),
+         #add_cost_upper=tres_30*sum(daily.cost*r.est.upper/crew.size),
+         #add_cost_lower=tres_30*sum(daily.cost*r.est.lower/crew.size),
          add_cost_crew=daily.cost[1]*add_res_crew,
          add_cost_crew_upper=daily.cost[1]*add_res_crew_upper,
          add_cost_crew_lower=daily.cost[1]*add_res_crew_lower,
          add_cost_engine=daily.cost[2]*add_res_engine,
          add_cost_engine_upper=daily.cost[2]*add_res_engine_upper,
-         add_cost_engine_lower=daily.cost[2]*add_res_engine_lower         
+         add_cost_engine_lower=daily.cost[2]*add_res_engine_lower,
+         add_cost=add_cost_crew+add_cost_engine,
+         add_cost_upper=add_cost_crew_upper+add_cost_engine_upper,
+         add_cost_lower=add_cost_crew_lower+add_cost_engine_lower
          )
 
 fire.pts.homes <- fire.dat.homes %>% 
   group_by(ics_209_incident_number) %>%
-  summarize(#fire_name=first(fire_name),
+  summarize(fire_name=first(fire_name),
             latitude=first(latitude),
             longitude=first(longitude),
             max_scale=max(scale),
             year=first(year(discovery_date)),
+            state=first(state),
             add_homes=sum(tres_30,na.rm = T),
             add_crew=sum(add_res_crew,na.rm = T),
             add_engine=sum(add_res_engine,na.rm = T),
@@ -101,7 +62,29 @@ fire.pts.homes %>%
   summarise(mean_scale=mean(max_scale))
 
 
-#####
+###################
+fire.pts.homes %>%
+  group_by(year,state) %>%
+  summarize_at(vars(matches("(cost)")),funs(sum(.,na.rm=T))) %>%
+  mutate_at(vars(matches("(cost)")),~round(.,digits = 2)) %>%
+  mutate_at(vars(matches("(cost)")),dollar) %>% 
+  View()
+
+fire.pts.homes %>%
+  group_by(year,state) %>%
+  summarize_at(vars(matches("(cost)")),funs(sum(.,na.rm=T))) %>%
+  ungroup() %>%
+  group_by(state) %>%
+  summarize_at(vars(matches("(cost)")),funs(max(.,na.rm=T))) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_col(aes(x=state,y=add_cost)) 
+
+#Try to add error bars to 
+  
+
+####################
+
 #
 # fire.dat.new %>% 
 #   group_by(year(discovery_date)) %>%
@@ -110,7 +93,9 @@ fire.pts.homes %>%
 #             total_cost_lower=sum(add_cost_lower,na.rm = T)) 
 fire.dat.homes %>% 
   group_by(year(discovery_date)) %>%
-  summarize_at(vars(matches("(cost)")),funs(sum(.,na.rm=T))) 
+  summarize_at(vars(matches("(cost)")),funs(sum(.,na.rm=T))) %>%
+  mutate_at(vars(matches("(cost)")),~round(.,digits = 2)) %>%
+  mutate_at(vars(matches("(cost)")),dollar) %>% View()
 
 #annual average
 fire.dat.homes %>% 

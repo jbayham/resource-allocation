@@ -11,5 +11,5 @@ g.short <- st_read(dsn="data/FPA_FOD_20150323.gdb",
   filter(state %in% c("AZ","CA","CO","ID","MT","NM","OR","UT","WA","WY"),
          !is.na(ics_209_incident_number)) 
 
-save(g.short,file="cache/short_sf.Rdata")
+save(g.short,file="cache/g_short.Rdata")
 

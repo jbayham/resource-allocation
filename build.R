@@ -8,7 +8,7 @@ source("functions/init_functions.R")
 
 #Loading and installing packages
 init.pacs(c("tidyverse","lubridate","foreign","mice","foreach","doSNOW",
-          "sf","raster","USAboundaries","leaflet","viridis","scales",
+          "sf","raster","USAboundaries","leaflet","viridis","scales","rgdal",
           "conflicted","htmlwidgets"))
 
 
@@ -32,4 +32,4 @@ if(!dir.exists("data")){
 }
 
 #Load cached data if exists otherwise build data
-#cache.or.build()
+cache.or.build()

@@ -4,9 +4,9 @@
 load("data/structures.Rdata")
 ics.dat <- structures %>%
   filter(str_detect(structure_type,"Residence")) %>%
+  mutate(im_report_date=as_date(im_report_date)) %>%
   group_by(im_incident_number,im_report_date) %>%
   summarise(threatened=max(threatened)) %>%
-  ungroup() %>%
-  mutate(im_report_date=as_date(im_report_date))
+  ungroup() 
 
-save(ics.dat,file = "cache/ics_structures.Rdata")
+save(ics.dat,file = "cache/ics_dat.Rdata")

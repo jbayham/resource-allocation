@@ -4,7 +4,7 @@
 #Loading wui layer in each state and binding them together
 shp.files <- str_subset(dir("data/pbg",full.names = T),".shp$")
 
-wui.shp <- map(shp.files,
+wui.poly <- map(shp.files,
                function(x){
                 st_read(x) %>%
                    rename_all(str_to_lower) %>%
@@ -14,9 +14,28 @@ wui.shp <- map(shp.files,
 }  )
 
 
-wui.shp <- purrr::reduce(wui.shp,rbind)
+wui.poly <- purrr::reduce(wui.poly,rbind)
+
+save(wui.poly,file = "cache/wui_poly.Rdata")
 
 # ggplot() +
-#  geom_sf(data = wui.shp %>% sample_n(500))
+#  geom_sf(data = wui.poly %>% sample_n(500))
 
-save(wui.shp,file = "cache/housing_sf.Rdata")
+##############################################
+#Rasterizing the wui data
+western.states <- us_states(resolution = "low",
+                            states = c("washington","oregon","california","arizona","nevada","utah","idaho","montana","wyoming","colorado","new mexico")) %>%
+  st_transform(plot.proj)
+
+wui.poly <- st_intersection(wui.poly,western.states) %>%
+  mutate(scale=(scale-1)*100,
+         scale=ifelse(scale<0,0,scale)) %>%
+  st_transform(3857)
+
+r.raster <- raster()   #Creating raster object
+extent(r.raster) <- extent(wui.poly)  #Setting extent to match sf object
+res(r.raster) <- 2000 #Setting cell size in meters (resolution)
+wui.raster <- rasterize(wui.poly,r.raster,field="scale",fun=max)
+
+save(wui.raster,file = "cache/wui_raster.Rdata")
+
