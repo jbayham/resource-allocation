@@ -58,10 +58,7 @@ fire.pts.homes <- fire.dat.homes %>%
 
 save(fire.dat.homes,fire.pts.homes,file = "cache/fire_dat_homes.Rdata")
 
-fire.pts.homes %>%
-  summarise(mean_scale=mean(max_scale))
-
-
+summary(fire.pts.homes$max_scale)
 ###################
 fire.pts.homes %>%
   group_by(year,state) %>%
@@ -77,8 +74,15 @@ fire.pts.homes %>%
   group_by(state) %>%
   summarize_at(vars(matches("(cost)")),funs(max(.,na.rm=T))) %>%
   ungroup() %>%
-  ggplot() +
-  geom_col(aes(x=state,y=add_cost)) 
+  ggplot(aes(x=reorder(state, add_cost),y=add_cost)) +
+  geom_col() +
+  geom_errorbar(aes(ymin=add_cost_lower,ymax=add_cost_upper),width=0) +
+  coord_flip() +
+  scale_y_continuous(name="Projected Cost",labels = dollar) +
+  scale_x_discrete(name="") +
+  theme_bw()
+
+ggsave(filename = "figures/cost_by_state.pdf",width = 5,height = 4,units = "in")
 
 #Try to add error bars to 
   

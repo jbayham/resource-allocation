@@ -26,7 +26,7 @@ loop.out <- foreach(i=1:dim(fire.pts)[1],
                     .packages = c("sf","dplyr"),
                     .inorder = T) %dopar% {  
                       calculate.scale(fire.pt = fire.pts[i,],
-                                      wui.shp = wui.shp %>% dplyr::select(scale))
+                                      wui.shp = wui.poly %>% dplyr::select(scale))
                     }
 stopCluster(cl)
 

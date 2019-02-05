@@ -42,7 +42,7 @@ cache.or.build <- function(){
     dir.create("cache")
   }
   cache.files <- dir("cache",pattern = ".Rdata") 
-  if(!is.null(cache.files)){
+  if(length(cache.files)>0){
     for(cache in cache.files){
       message(str_c("Loading ",cache," from cache..."))
       load(str_c("cache/",cache),envir = .GlobalEnv)
@@ -51,7 +51,7 @@ cache.or.build <- function(){
   } else {
     for(munge in dir("munge",pattern = ".R")){
       message(str_c("Running ",str_c("munge/",munge),"... "))
-      source(str_c("munge",munge))
+      source(str_c("munge/",munge))
     }
   }
 

@@ -5,8 +5,6 @@
 #Plotting with leaflet raster
 #load("cache/wui_plot.Rdata")
 
-#Define color pallete
-pal <- colorNumeric(palette = "viridis",values(wui.raster),na.color = "transparent",reverse = T)
 
 fire.pts.homes <- fire.pts.homes %>%
   mutate_at(vars(add_homes:add_cost_upper),~round(.,digits = 2)) %>%
@@ -31,11 +29,17 @@ fire.labels <- sprintf(
   fire.pts.homes.1000$add_cost_upper) %>%
   lapply(htmltools::HTML)
 
+wui.raster[wui.raster==0] <- NA
+
+#Define color pallete
+pal <- colorNumeric(palette = "viridis",values(wui.raster),na.color = "transparent",reverse = T)
+#pal <- colorNumeric(palette = "Blues",values(wui.raster),na.color = "transparent")
+
 #Create map
 m <- leaflet() %>% setView(lng = -113.758744, lat = 39.873757, zoom = 5)
 map.tosave <- m %>% 
   addProviderTiles(providers$Stamen.TonerLite) %>%
-  addRasterImage(wui.raster, colors = pal, opacity = .55) %>%
+  addRasterImage(wui.raster, colors = pal, opacity = .55,group = "housing") %>%
   addLegend(pal=pal,
             values = values(wui.raster),
             title = "Housing Density Change <br>2000-2030",
@@ -51,10 +55,12 @@ map.tosave <- m %>%
              radius = 1609, stroke = F, fill = TRUE, fillColor = "red", fillOpacity = .5,
              label = fire.labels,group = ">1000 Homes Thr.") %>%
   addScaleBar(position = c("bottomleft")) %>%
-  addLayersControl(overlayGroups = c("All Fires", ">1000 Homes Thr."), 
-                   options = layersControlOptions(collapsed = FALSE))
+  addLayersControl(overlayGroups = c("housing","All Fires", ">1000 Homes Thr."), 
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  hideGroup(group = c("housing","All Fires", ">1000 Homes Thr."))
 
-saveWidget(map.tosave,file="CA_Growth_Fire.html",selfcontained = T)
+saveWidget(map.tosave,file="resource_allocation_simulation.html",selfcontained = T)
+file.rename(from = "resource_allocation_simulation.html",to="figures/resource_allocation_simulation.html")
 #Can use mapshot but I just displayed it and used windows snipping tool
 #mapview::mapshot(map.tosave,file="CA_Growth_Fire.pdf")
 

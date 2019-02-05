@@ -27,15 +27,15 @@ western.states <- us_states(resolution = "low",
                             states = c("washington","oregon","california","arizona","nevada","utah","idaho","montana","wyoming","colorado","new mexico")) %>%
   st_transform(plot.proj)
 
-wui.poly <- st_intersection(wui.poly,western.states) %>%
+wui.poly.toraster <- st_intersection(wui.poly,western.states) %>%
   mutate(scale=(scale-1)*100,
          scale=ifelse(scale<0,0,scale)) %>%
   st_transform(3857)
 
 r.raster <- raster()   #Creating raster object
-extent(r.raster) <- extent(wui.poly)  #Setting extent to match sf object
+extent(r.raster) <- extent(wui.poly.toraster)  #Setting extent to match sf object
 res(r.raster) <- 2000 #Setting cell size in meters (resolution)
-wui.raster <- rasterize(wui.poly,r.raster,field="scale",fun=max)
+wui.raster <- rasterize(wui.poly.toraster,r.raster,field="scale",fun=max)
 
 save(wui.raster,file = "cache/wui_raster.Rdata")
 
