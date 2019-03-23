@@ -37,8 +37,7 @@ calculate.scale <- function(fire.pt,wui.shp,radius=6561.68){  #6561.68 ft=2km
   pt.buffered <- st_buffer(fire.pt,dist = radius)
   pt.intersection <- suppressWarnings(st_intersection(pt.buffered,wui.shp)) 
   scale <- pt.intersection %>%
-    #dplyr::summarise(scale=stats::weighted.mean(scale,st_area(pt.intersection),na.rm=T))
-    dplyr::summarise(scale=max(scale,na.rm=T))
+    dplyr::summarise_at(vars(hden00,hden30,scale),~max(.,na.rm=T))
   st_geometry(scale) <- NULL
   return(scale)
 }

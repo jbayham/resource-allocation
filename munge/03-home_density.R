@@ -2,7 +2,7 @@
 #to rescale the threatened homes variable.
 
 #Loading wui layer in each state and binding them together
-shp.files <- str_subset(dir("data/pbg",full.names = T),".shp$")
+shp.files <- str_subset(dir("data/pbg",full.names = T),".shp$") %>% str_subset("ca")
 
 wui.poly <- map(shp.files,
                function(x){

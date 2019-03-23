@@ -21,18 +21,28 @@ fire.pts <- fire.dat %>%
 
 cl <- makeCluster(4)
 registerDoSNOW(cl)
+
+#Setting up progress bar
+pb <- txtProgressBar(max=dim(fire.pts)[1], style=3)
+progress <- function(n) setTxtProgressBar(pb, n)
+opts <- list(progress=progress)
+
 loop.out <- foreach(i=1:dim(fire.pts)[1],
                     .combine = 'rbind',
                     .packages = c("sf","dplyr"),
-                    .inorder = T) %dopar% {  
+                    .inorder = T,
+                    .options.snow=opts) %dopar% {  
                       calculate.scale(fire.pt = fire.pts[i,],
-                                      wui.shp = wui.poly %>% dplyr::select(scale))
+                                      wui.shp = wui.poly)
                     }
 stopCluster(cl)
+close(pb)
+
 
 #associating the scale factor with the fire
-fire.pts$scale <- unlist(loop.out)
-fire.pts$scale[is.nan(fire.pts$scale) | fire.pts$scale<1] <- 1
+fire.pts <- bind_cols(fire.pts,loop.out) %>%
+  mutate_at(vars(hden00:scale),~ifelse(is.nan(.)|is.infinite(.),1,.))
+
 
 st_geometry(fire.pts) <- NULL
 
