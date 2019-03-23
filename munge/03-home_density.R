@@ -8,8 +8,9 @@ wui.poly <- map(shp.files,
                function(x){
                 st_read(x) %>%
                    rename_all(str_to_lower) %>%
-                   transmute(scale=hden30/hden00,
-                             scale=if_else(is.na(scale),1,scale)) %>%
+                   select(hden00,hden30) %>%
+                   mutate(scale=hden30/hden00,
+                          scale=if_else(is.na(scale),1,scale)) %>%
                    st_transform(plot.proj)
 }  )
 
