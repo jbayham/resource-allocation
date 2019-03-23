@@ -19,7 +19,7 @@ conflict_prefer("select", "dplyr")
 #########################
 #Setting project map projections
 readin.proj=4269 #because it works with the lat and lons provided
-plot.proj=2227
+plot.proj=2163  #2227  - in feet
 #########################
 #Loading project helper functions
 run.script("functions")
